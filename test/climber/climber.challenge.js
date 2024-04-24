@@ -57,7 +57,16 @@ describe('[Challenge] Climber', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // Note: execute() allows code execution before the operation is checked
+        // Plan: execute our way into adding a valid operation into the queue to avoid a revert, call updateDelay(0) 
+        //    and then upgradeToAndCall() the proxy to the hacked contract.
+        // Note: the hacked contract respects the base contract's storage layout
+        // Problem: the contract is an admin of itself and of proposers, but not a proposer, need to call grantRole to become a proposer itself
+        // Problem: a recursive definition of dataElements arises when constructing an operation for schedule()
+        // Solution: recreate the operation struct in the hacked contract, give it the proposer role and call schedule from it to avoid recursion
+        
+        Exploit = await (await ethers.getContractFactory('ExploitClimber', player)).deploy(vault.address, timelock.address, token.address);
+        await Exploit.exploit();
     });
 
     after(async function () {

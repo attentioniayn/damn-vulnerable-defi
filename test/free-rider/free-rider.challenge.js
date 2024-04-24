@@ -1,4 +1,4 @@
-// Get compiled Uniswap v2 data
+// SPDX-License-Identifier: MIT
 const pairJson = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 const factoryJson = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const routerJson = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
@@ -105,7 +105,22 @@ describe('[Challenge] Free Rider', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+
+        // player is the beneficiary
+        // We need money to do our job, luckily the authors of FreeRiderRecovery added a state modifier inside the check
+        // Just need one NFT to get the prize and then we can use that to recover all of them
+        // Plan: flash swap into some ether and use the current balance to pay for the gas. Use the borrowed ether to buy NFTs.
+        // Problem: can't swap again with uniswap v2 while a flash swap is taking place
+        // Solution: WETH is not a simple ERC20 implementation, but can be unwrapped into ETH by using withdraw()!
+        // Finally abuse "cache bug" in _buyOne to get free tokens and get the reward.
+        // Additionally, the marketplace doesn't check if there are duplicate ids in the buyMany() and doesn't keep track of what has been sold
+        // Send a big array of buys and drain, only issue is that we can't transfer back the NFT "i" in the receiver call of "i" itself
+        deadline = (await ethers.provider.getBlock('latest')).timestamp + 150;
+
+        Exploit = await (await ethers.getContractFactory('ExploitFreerider', player)).deploy(
+            uniswapRouter.address, uniswapPair.address, token.address, weth.address, marketplace.address, devsContract.address, nft.address);
+
+        await Exploit.exploit(deadline);
     });
 
     after(async function () {

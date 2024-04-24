@@ -45,7 +45,19 @@ describe('[Challenge] Backdoor', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // Important external contracts: GnosisSafe, GnosisSafeProxyFactory and FallbackManager.sol
+        // Idea: exploit FallbackManager for arbitrary code execution through a custom contract to
+        //  use only 1 tx for the hack.
+        // The money of the beneficiary is sent to the wallet that is under our control.
+        // Plan: use the factory's createProxyWithCallback() and using the initializer setup one wallet for each user,
+        //  putting each in turn as owner, while also setting up the exploit contract as a module using the setupModules() function
+        //  called by the createProxyWithCallback(). Once setup the "module" can send arbitrary transactions for the wallet to execute.
+        //  setupModules() doesn't require signatures or owner check, so use it to call enableModule() to add the backdoor and call the registry.
+        //  After that a module can use execTransactionFromModule to do anything.
+        //  Note: modules are contained in a linked list.
+
+        await (await ethers.getContractFactory('ExploitRegistryProxy', player)).deploy(
+            walletRegistry.address, walletFactory.address, masterCopy.address, users, token.address, {gasLimit: 1e7});
     });
 
     after(async function () {

